@@ -14,7 +14,7 @@ from datetime import date
 import shelve
 
 from collections import OrderedDict
-from vtobject import * 
+from vtobject import *
 from demoApi import *
 from eventEngine import EventEngine
 
@@ -23,26 +23,26 @@ from eventEngine import EventEngine
 class MainEngine:
     """主引擎，负责对API的调度"""
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def __init__(self):
         """Constructor"""
-        self.eventEngine = EventEngine()         # 创建事件驱动引擎
-        
-        self.md = DemoMdApi(self.eventEngine)    # 创建API接口
-        #self.md = DemoL2Api(self.ee)   # 如果使用L2行情就改为这行
+        self.eventEngine = EventEngine()  # 创建事件驱动引擎
+
+        self.md = DemoMdApi(self.eventEngine)  # 创建API接口
+        # self.md = DemoL2Api(self.ee)   # 如果使用L2行情就改为这行
         self.td = DemoTdApi(self.eventEngine)
-        
-        self.eventEngine.start()                 # 启动事件驱动引擎
+
+        self.eventEngine.start()  # 启动事件驱动引擎
         self.dataEngine = DataEngine(self, self.eventEngine)
-        
+
         # 循环查询持仓和账户相关
-        self.countGet = 0               # 查询延时计数
-        self.lastGet = 'Account'        # 上次查询的性质
+        self.countGet = 0  # 查询延时计数
+        self.lastGet = 'Account'  # 上次查询的性质
         self.eventEngine.register(EVENT_TDLOGIN, self.initGet)  # 登录成功后开始初始化查询
-        
+
         # 合约储存相关
-        #self.dictInstrument = {}        # 字典（保存合约查询数据）
-        #self.eventEngine.register(EVENT_INSTRUMENT, self.insertInstrument)
+        # self.dictInstrument = {}        # 字典（保存合约查询数据）
+        # self.eventEngine.register(EVENT_INSTRUMENT, self.insertInstrument)
         # 接口实例
         self.gatewayDict = OrderedDict()
         self.gatewayDetailList = []
@@ -118,7 +118,7 @@ class MainEngine:
         if gateway:
             gateway.connect()
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def login(self, userid, mdPassword, tdPassword, mdAddress, tdAddress):
         """登陆"""
         db_path = {}
@@ -130,23 +130,23 @@ class MainEngine:
         print(db_path)
         self.md.login(db_path)
         self.td.login(db_path)
-    
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def subscribe(self, instrumentid, exchangeid):
         """订阅合约"""
         self.md.subscribe(instrumentid, exchangeid)
-        
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def getAccount(self):
         """查询账户"""
         self.dataEngine.getAccount()
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def getPosition(self):
         """查询持仓"""
         self.dataEngine.getPosition()
-    
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def getInstrument(self):
         """获取合约"""
         event = Event(type_=EVENT_LOG)
@@ -155,37 +155,37 @@ class MainEngine:
         log.logContent = u'查询合约信息'
         event.dict_['log'] = log
         self.eventEngine.put(event)
-        
+
         self.md.getInstrument()
-        
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def sendOrder(self, instrumentid, exchangeid, price, pricetype, volume, direction):
         """发单"""
         self.td.sendOrder(instrumentid, exchangeid, price, pricetype, volume, direction)
-        
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def cancelOrder(self, orderref):
         """撤单"""
 
         self.td.cancelOrder(orderref)
-        
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def getAccountPosition(self, event):
         """循环查询账户和持仓"""
         self.countGet = self.countGet + 1
-        
+
         # 每5秒发一次查询
         if self.countGet > 5:
-            self.countGet = 0   # 清空计数
-            
+            self.countGet = 0  # 清空计数
+
             if self.lastGet == 'Account':
                 self.getPosition()
                 self.lastGet = 'Position'
             else:
                 self.getAccount()
                 self.lastGet = 'Account'
-    
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def initGet(self, event):
         """在交易服务器登录成功后，开始初始化查询"""
         # 打开设定文件setting.vn
@@ -194,13 +194,13 @@ class MainEngine:
         self.getAccount()
         self.getPosition()
         self.eventEngine.register(EVENT_TIMER, self.getAccountPosition)
- 
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def selectInstrument(self, instrumentid):
         """获取合约信息对象"""
         return self.dataEngine.getContract(instrumentid)
-    
-    #----------------------------------------------------------------------
+
+    # ----------------------------------------------------------------------
     def exit(self):
         """退出"""
         # 销毁API对象
@@ -208,10 +208,10 @@ class MainEngine:
         self.md.exit()
         self.td = None
         self.md = None
-        
+
         # 停止事件驱动引擎
         self.eventEngine.stop()
-        
+
     # ----------------------------------------------------------------------
     def getAllContracts(self):
         """查询所有合约（返回列表）"""
@@ -289,7 +289,7 @@ class DataEngine(object):
             self.contractDict[contract.vtSymbol] = contract
 
     # ----------------------------------------------------------------------
-    def update_acc(self,event):
+    def update_acc(self, event):
         data = event.dict_['data']
         sub_stocks = set()
         print(data)
@@ -306,9 +306,10 @@ class DataEngine(object):
             for stock in self.stockDict[acc].keys():
                 sub_stocks.add(stock)
         for stock in sub_stocks:
-            self.mainEngine.subscribe(stock[:6],stock[-2:])
+            self.mainEngine.subscribe(stock[:6], stock[-2:])
 
-        # ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+
     def update_trade(self, event):
         d = event.dict_['data']
         if d['Direction'] == '1':
@@ -319,7 +320,7 @@ class DataEngine(object):
                 stocks[d['InstrumentID']][0] += d['Volume']
                 stocks[d['InstrumentID']][1] = (vol * pri + d['Volume'] * d['Price']) / (vol + d['Volume'])
             else:
-                stocks[d['InstrumentID']] = [d['Volume'],  d['Price'], '', d['Volume'] * d['Price']]
+                stocks[d['InstrumentID']] = [d['Volume'], d['Price'], '', d['Volume'] * d['Price']]
             self.stockDict[d['ExchangeInstID']] = stocks
         elif d['Direction'] == '2':
             acct = self.accountDict[d['ExchangeInstID']]
@@ -335,10 +336,8 @@ class DataEngine(object):
     def update_mkt_data(self, event):
         d = event.dict_['data']
 
-
         for key in self.Portfolio.keys():
             self.Portfolio[key].update_mkt(d)
-
 
     # ----------------------------------------------------------------------
     def getContract(self, vtSymbol):
@@ -367,7 +366,7 @@ class DataEngine(object):
     def loadContracts(self):
         """从硬盘读取合约对象"""
         f = shelve.open(self.contractFileName)
-        no_data =True
+        no_data = True
         if 'data' in f:
             data = f['data']
             if 'date' in data:
@@ -423,7 +422,7 @@ class DataEngine(object):
         """查询所有活动委托（返回列表）"""
         return self.workingOrderDict.values()
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def getAccount(self):
         """查询账户"""
         acc = '无'
@@ -448,7 +447,7 @@ class DataEngine(object):
             self.Portfolio[key].calc_total()
             print(self.Portfolio[key])
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def getPosition(self):
         """查询持仓"""
         acc = '无'
@@ -482,6 +481,6 @@ class DataEngine(object):
         self.eventEngine.register(EVENT_INSTRUMENT, self.updateContract)
         self.eventEngine.register(EVENT_ORDER, self.updateOrder)
         self.eventEngine.register(EVENT_MARKETDATA, self.update_mkt_data)
-        self.eventEngine.register((EVENT_ACCOUNT+'data'), self.update_acc)
+        self.eventEngine.register((EVENT_ACCOUNT + 'data'), self.update_acc)
         self.eventEngine.register((EVENT_TRADE + 'data'), self.update_trade)
         self.eventEngine.register((EVENT_ORDER + 'start'), self.start_ord)
