@@ -112,10 +112,10 @@ class DemoMdApi(MdApi):
 
     # ----------------------------------------------------------------------
     def on_get_instrument(self, req, reqID):
-        """合约查询回报
-        由于该回报的推送速度极快，因此不适合全部存入队列中处理，
-        选择先储存在一个本地字典中，全部收集完毕后再推送到队列中
-        （由于耗时过长目前使用其他进程读取）"""
+    # 合约约查询回报
+    # 由于该回报的推送速度极快，因此不适合全部存入队列中处理，
+    # 选择先储存在一个本地字典中，全部收集完毕后再推送到队列中
+    # 由于耗时过长目前使用其他进程读取）
         if req['ErrorID'] == 0:
             event = Event(type_=EVENT_INSTRUMENT)
             event.dict_['data'] = req['data']
@@ -149,7 +149,7 @@ class DemoMdApi(MdApi):
 
     # ----------------------------------------------------------------------
     def login(self, db_path):
-        """连接服务器"""
+        # 连接服务器
         self.__db_path = db_path
 
         # 初始化连接，成功会调用onFrontConnected
@@ -169,17 +169,17 @@ class DemoMdApi(MdApi):
 
 ########################################################################
 class DemoTdApi(TdApi):
-    """
-    Demo中的交易API封装
-    主动函数包括：
-    login 登陆
-    getInstrument 查询合约信息
-    getAccount 查询账号资金
-    getInvestor 查询投资者
-    getPosition 查询持仓
-    sendOrder 发单
-    cancelOrder 撤单
-    """
+
+#     Demo中的交易API封装
+#     主动函数包括：
+#     login 登陆
+#     getInstrument 查询合约信息
+#     getAccount 查询账号资金
+#     getInvestor 查询投资者
+#     getPosition 查询持仓
+#     sendOrder 发单
+#     cancelOrder 撤单
+
 
     # ----------------------------------------------------------------------
     def __init__(self, eventEngine):
@@ -364,6 +364,7 @@ class DemoTdApi(TdApi):
     # ----------------------------------------------------------------------
     def on_order(self, req, reqID):
         """报单回报"""
+        
         # 更新最大报单编号
         rec = req['data']
         self.__query_tick = 0
