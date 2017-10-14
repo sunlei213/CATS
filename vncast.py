@@ -16,7 +16,7 @@ from queue import Queue, Empty
 # from trader.vtFunction import getTempPath, getJsonPath
 # from trader.vtGateway import *
 from threading import Thread
-from time import sleep, strftime, localtime
+from time import sleep
 from collections import defaultdict, OrderedDict
 import dbf
 from vtobject import *
@@ -635,7 +635,7 @@ class TdApi(object):
         for rec in hb_list:
             self.update_cj(rec, False)
         print('成交获取完毕')
-        for key, rec in self._wt_list.items():
+        for rec in self._wt_list.values():
             rq = dict()
             rq['callback'] = self.on_order
             rq['data'] = rec

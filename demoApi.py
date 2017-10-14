@@ -5,11 +5,9 @@
 主要对API进行了一定程度的简化封装，方便开发。
 """
 
-import os
 
 from vncast import MdApi, TdApi
 from eventEngine import *
-from lts_data_type import defineDict
 from vtobject import VtLogData
 
 
