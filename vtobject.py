@@ -236,8 +236,8 @@ class VtErrorData(VtBaseData):
 
         self.errorTime = strftime('%X', localtime())  # 错误生成时间
 
-
-########################################################################
+ 
+#######################################################################
 class VtLogData(VtBaseData):
     """日志数据类"""
 
@@ -399,6 +399,7 @@ class Portfolio(object):
 
     
     def set_trade(self, record):
+        # 发生委托更新冻结股份或资金
         if record.symbol.strip() in self.long_positions:
             self.long_positions[record.symbol.strip()].set_trade(record)
 
@@ -409,7 +410,7 @@ class Positions(object):
     def __init__(self, stock, name='', vol=0, avg_px=0.00):
         self.security = stock            # 标的代码
         self.name = name
-        self.price = 0.00                # 最新行情价格
+        self.price = avg_px              # 最新行情价格
         self.avg_cost = avg_px           # 开仓均价，买入标的的加权平均价, 计算方法是: (buy_volume1_buy_price1
                                          # + buy_volume2_buy_price2 + …) / (buy_volume1 + buy_volume2 + …)
                                          # 每次买入后会调整avg_cost, 卖出时avg_cost不变.这个值也会被用来计算浮动盈亏.
@@ -472,6 +473,7 @@ class Positions(object):
         return self.value
         
     def set_trade(self, record):
+        # 发生成交更新冻结股份或资金
         if record.tradeside.strip() == '2':
             self.locked_amount += int(record.ord_qty) - int(record.filled_qty)
         elif record.tradeside.strip() == '1':
