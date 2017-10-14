@@ -13,6 +13,7 @@
 """
 from time import strftime,localtime
 from constant import *
+from builtins import setattr
 
 
 ########################################################################
@@ -355,13 +356,13 @@ class Portfolio(object):
     @property
     def positions(self):                # 等同于long_positions
         return self.long_positions
-    
+
     def __str__(self):
         return '资金账号:{0}, 可用资金:{1:.2f}, 总资产:{2:.2f}, 总市值:{3:.2f}'.format(self.account, self.available_cash,
                                                                          self.total_value, self.positions_value)
 
     def get_all_positions(self):
-        return [str(self.long_positions[x]) for x in self.long_positions.keys()]
+        return [self.long_positions[x].position() for x in self.long_positions.keys()]
     
     def calc_total(self):
         """计算市值和总资产"""
@@ -396,7 +397,6 @@ class Portfolio(object):
         pri = data['lastPrice']
         if stock in self.long_positions:
             self.long_positions[stock].update_mkt(pri)
-
     
     def set_trade(self, record):
         # 发生委托更新冻结股份或资金
@@ -478,3 +478,14 @@ class Positions(object):
             self.locked_amount += int(record.ord_qty) - int(record.filled_qty)
         elif record.tradeside.strip() == '1':
             self.today_amount += int(record.filled_qty)
+    
+    def position(self):
+        # 以字典方式返回持仓
+        data = {}
+        data['InstrumentID'] = self.security
+        data['StockName'] = self.name
+        data['Position'] = self.total_amount
+        data['PositionCost'] = self.avg_cost
+        data['StockValue'] = self.value
+        return data
+
