@@ -1,5 +1,5 @@
-#!/usr/bin/env python  
-# encoding: utf-8  
+#!/usr/bin/env python
+# encoding: utf-8
 
 """ 
 @version: v1.0 
@@ -11,9 +11,8 @@
 @file: vtobject.py 
 @time: 2017/10/2 11:24 
 """
-from time import strftime,localtime
+from time import strftime, localtime
 from constant import *
-from builtins import setattr
 
 
 ########################################################################
@@ -237,7 +236,7 @@ class VtErrorData(VtBaseData):
 
         self.errorTime = strftime('%X', localtime())  # 错误生成时间
 
- 
+
 #######################################################################
 class VtLogData(VtBaseData):
     """日志数据类"""
@@ -264,7 +263,7 @@ class VtContractData(VtBaseData):
         self.exchange = EMPTY_STRING  # 交易所代码
         self.vtSymbol = EMPTY_STRING  # 合约在vt系统中的唯一代码，通常是 合约代码.交易所代码
         self.name = EMPTY_UNICODE  # 合约中文名
-        self.is_t0 = False      
+        self.is_t0 = False
 
         self.productClass = EMPTY_UNICODE  # 合约类型
         self.size = EMPTY_INT  # 合约大小
@@ -342,7 +341,8 @@ class Portfolio(object):
 
     def __init__(self, account, start_cash=0.00):
         self.account = account                # 资金账号
-        self.inout_cash = start_cash          # 累计出入金, 比如初始资金1000, 后来转移出去100, 则这个值是1000 - 100
+        # 累计出入金, 比如初始资金1000, 后来转移出去100, 则这个值是1000 - 100
+        self.inout_cash = start_cash
         self.available_cash = start_cash      # 可用资金, 可用来购买证券的资金
         self.transferable_cash = start_cash   # 可取资金, 即可以提现的资金, 不包括今日卖出证券所得资金
         self.locked_cash = 0.00               # 挂单锁住资金
@@ -363,7 +363,7 @@ class Portfolio(object):
 
     def get_all_positions(self):
         return [self.long_positions[x].position() for x in self.long_positions.keys()]
-    
+
     def calc_total(self):
         """计算市值和总资产"""
         self.total_value = self.available_cash
@@ -397,7 +397,7 @@ class Portfolio(object):
         pri = data['lastPrice']
         if stock in self.long_positions:
             self.long_positions[stock].update_mkt(pri)
-    
+
     def set_trade(self, record):
         # 发生委托更新冻结股份或资金
         if record.symbol.strip() in self.long_positions:
@@ -411,30 +411,31 @@ class Positions(object):
         self.security = stock            # 标的代码
         self.name = name
         self.price = avg_px              # 最新行情价格
-        self.avg_cost = avg_px           # 开仓均价，买入标的的加权平均价, 计算方法是: (buy_volume1_buy_price1
-                                         # + buy_volume2_buy_price2 + …) / (buy_volume1 + buy_volume2 + …)
-                                         # 每次买入后会调整avg_cost, 卖出时avg_cost不变.这个值也会被用来计算浮动盈亏.
+        # 开仓均价，买入标的的加权平均价, 计算方法是: (buy_volume1_buy_price1
+        self.avg_cost = avg_px
+        # + buy_volume2_buy_price2 + …) / (buy_volume1 + buy_volume2 + …)
+        # 每次买入后会调整avg_cost, 卖出时avg_cost不变.这个值也会被用来计算浮动盈亏.
         self.hold_cost = vol * avg_px    # 持仓成本，针对期货有效。
         self.init_time = localtime()     # 建仓时间，格式为datetime.datetime
-        self.transact_time = localtime() # 最后交易时间，格式为datetime.datetime
+        self.transact_time = localtime()  # 最后交易时间，格式为datetime.datetime
         self.total_amount = vol          # 总仓位, 但不包括挂单冻结仓位
         self.closeable_amount = vol      # 可卖出的仓位
         self.today_amount = 0            # 今天开的仓位
         self.locked_amount = 0           # 挂单冻结仓位
         self.value = vol * avg_px        # 标的价值，计算方法是: price * total_amount * multiplier,
-                                         # 其中股票、基金的multiplier为1，期货为相应的合约乘数
+        # 其中股票、基金的multiplier为1，期货为相应的合约乘数
         self.is_t0 = False               # 是否T+0
 
     def __str__(self):
         return '{0}:{1},价格:{2}, 持仓均价:{3}, 可用:{4}, 市值:{5}'.format(self.security, self.name, self.price,
                                                                  self.avg_cost, self.closeable_amount, self.value)
-    
+
     def update(self, record):
         """更新账户信息"""
         self.total_amount = record[0]
         self.closeable_amount = record[0]
         self.avg_cost = record[1]
-        
+
         self.value = self.price * self.total_amount
 
     def update_order(self, order):
@@ -462,7 +463,8 @@ class Positions(object):
                     self.closeable_amount += order.cj_vol
             else:                                  # 买入委托或撤单
                 value = order.je
-        self.total_amount = self.closeable_amount + self.locked_amount + self.today_amount * (0 if self.is_t0 else 1)
+        self.total_amount = self.closeable_amount + self.locked_amount + \
+            self.today_amount * (0 if self.is_t0 else 1)
         self.value = self.price * self.total_amount
         return value
 
@@ -471,14 +473,14 @@ class Positions(object):
         self.price = price
         self.value = self.price * self.total_amount
         return self.value
-        
+
     def set_trade(self, record):
         # 发生成交更新冻结股份或资金
         if record.tradeside.strip() == '2':
             self.locked_amount += int(record.ord_qty) - int(record.filled_qty)
         elif record.tradeside.strip() == '1':
             self.today_amount += int(record.filled_qty)
-    
+
     def position(self):
         # 以字典方式返回持仓
         data = {}
@@ -488,4 +490,3 @@ class Positions(object):
         data['PositionCost'] = self.avg_cost
         data['StockValue'] = self.value
         return data
-

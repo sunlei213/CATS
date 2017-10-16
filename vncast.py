@@ -1,5 +1,5 @@
-#!/usr/bin/env python  
-# encoding: utf-8  
+#!/usr/bin/env python
+# encoding: utf-8
 
 """ 
 @version: v1.0 
@@ -68,7 +68,8 @@ class Order_rec:
 
     def update_cj(self, fill_qty, avg_px):
         self.cj_vol = int(fill_qty) - self._filled_qty
-        self.cj_je = (float(avg_px) * int(fill_qty) - self._filled_qty * self._avg_px) / self.cj_vol
+        self.cj_je = (float(avg_px) * int(fill_qty) -
+                      self._filled_qty * self._avg_px) / self.cj_vol
         self._avg_px = float(avg_px)
         self._filled_qty = int(fill_qty)
         self._avg_px = float(avg_px)
@@ -178,7 +179,8 @@ class MdApi(object):  # 行情处理类
                         if n == 0:
                             today = str(int(record.s6))
                             time1 = record.s2.strip()
-                            sh_time = '{0}:{1}:{2}'.format(time1[:2], time1[2:4], time1[-2:])
+                            sh_time = '{0}:{1}:{2}'.format(
+                                time1[:2], time1[2:4], time1[-2:])
                             continue
                         if dbf.is_deleted(record):
                             continue
@@ -276,7 +278,7 @@ class MdApi(object):  # 行情处理类
         except Exception as e:
             self.onError('打开上海行情库失败,错误信息：{0}'.format(str(e)), 0, True)
             hq_list = []
-        for n, record in enumerate(hq_list):
+        for record in hq_list:
             tick = VtContractData()
             if len(record):
                 tick.symbol = record.s1.strip()
@@ -395,7 +397,8 @@ class TdApi(object):
                 asset['acct']['zjky'] = float(rec.s4)
                 zzc += float(rec.s4)
             else:
-                asset['stocks'][rec.s1.strip()] = [int(rec.s3), float(rec.s4), rec.s8.strip(), float(rec.s9)]
+                asset['stocks'][rec.s1.strip()] = [int(rec.s3), float(
+                    rec.s4), rec.s8.strip(), float(rec.s9)]
                 zzc += float(rec.s9)
             asset['acct']['zzc'] = zzc
             self._zh_list[rec.acct.strip()] = asset
@@ -473,7 +476,8 @@ class TdApi(object):
                 self._hb_db.open()
                 rec_num = len(self._hb_db)
                 if self._cj_num < rec_num:
-                    hb_list = [self._hb_db[x] for x in range(self._cj_num, rec_num)]
+                    hb_list = [self._hb_db[x]
+                               for x in range(self._cj_num, rec_num)]
                     self._cj_num = rec_num
                 else:
                     hb_list = []
@@ -597,7 +601,8 @@ class TdApi(object):
             self._zh_list[can_rec.acct]['acct']['zjky'] += can_rec.je
         if can_rec.tradeside == '2':
             can_rec.cj_vol = 0
-            self._zh_list[can_rec.acct]['stocks'][can_rec.symbol][0] += (can_rec.ord_qty - can_rec.filled_qty)
+            self._zh_list[can_rec.acct]['stocks'][can_rec.symbol][0] += (
+                can_rec.ord_qty - can_rec.filled_qty)
         rq = dict()
         rq['callback'] = self.on_order
         rq['data'] = can_rec
@@ -623,7 +628,8 @@ class TdApi(object):
             self._hb_db.open()
             rec_num = len(self._hb_db)
             if self._cj_num < rec_num:
-                hb_list = [self._hb_db[x] for x in range(self._cj_num, rec_num)]
+                hb_list = [self._hb_db[x]
+                           for x in range(self._cj_num, rec_num)]
                 self._cj_num = rec_num
             else:
                 hb_list = []
@@ -683,7 +689,8 @@ class TdApi(object):
             dictLabels['ExchangeInstID'] = rec.acct.strip()
             dictLabels['Direction'] = rec.tradeside.strip()
             dictLabels['TradeTime'] = rec.ord_time.strip()
-            dictLabels['Volume'] = int(rec.filled_qty) - int(old_rec.filled_qty)
+            dictLabels['Volume'] = int(
+                rec.filled_qty) - int(old_rec.filled_qty)
             if dictLabels['Volume']:
                 dictLabels['Price'] = (int(rec.filled_qty) * float(rec.avg_px) - int(old_rec.filled_qty) *
                                        float(old_rec.avg_px)) / dictLabels['Volume']
@@ -720,10 +727,12 @@ class TdApi(object):
                 else:
                     self._zh_list[rec.acct.strip()]['stocks'][rec.symbol.strip()] = [int(rec.filled_qty),
                                                                                      float(rec.avg_px), '', 0.0]
-            tmp = self._wt_list[cl_id].update_cj(int(rec.filled_qty), float(rec.avg_px))
+            tmp = self._wt_list[cl_id].update_cj(
+                int(rec.filled_qty), float(rec.avg_px))
 
             if tmp and self._wt_list[cl_id].je > 0 and normal:
-                self._zh_list[rec.acct.strip()]['acct']['zjky'] += self._wt_list[cl_id].je
+                self._zh_list[rec.acct.strip(
+                )]['acct']['zjky'] += self._wt_list[cl_id].je
 
     def _wt_sell(self, rec, normal):
         cl_id = rec.client_id.strip()
@@ -731,16 +740,19 @@ class TdApi(object):
             if normal:
                 self._zh_list[rec.acct.strip()]['acct']['zjky'] += (int(rec.filled_qty) * float(rec.avg_px) -
                                                                     self._wt_list[cl_id].je)
-            self._wt_list[cl_id].update_cj(int(rec.filled_qty), float(rec.avg_px))
+            self._wt_list[cl_id].update_cj(
+                int(rec.filled_qty), float(rec.avg_px))
 
     def _wt_err(self, rec, normal):
         cl_id = rec.client_id.strip()
         self._wt_list[cl_id].can_cancel = False
         if normal:
             if rec.tradeside == '1':
-                self._zh_list[rec.acct.strip()]['acct']['zjky'] += self._wt_list[cl_id].je
+                self._zh_list[rec.acct.strip(
+                )]['acct']['zjky'] += self._wt_list[cl_id].je
             if rec.tradeside == '2':
-                self._zh_list[rec.acct.strip()]['stocks'][rec.symbol] += (rec.ord_qty - self._wt_list[cl_id].filled_qty)
+                self._zh_list[rec.acct.strip(
+                )]['stocks'][rec.symbol] += (rec.ord_qty - self._wt_list[cl_id].filled_qty)
 
     def _get_wt(self):
         self._ord_db.open()
