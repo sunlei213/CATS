@@ -15,7 +15,6 @@ from time import strftime, localtime
 from constant import *
 
 
-########################################################################
 class VtBaseData(object):
     """回调函数推送数据的基础类，其他数据类继承于此"""
 
@@ -26,7 +25,6 @@ class VtBaseData(object):
         self.rawData = None  # 原始数据
 
 
-########################################################################
 class VtTickData(VtBaseData):
     """Tick行情数据类"""
 
@@ -84,9 +82,6 @@ class VtTickData(VtBaseData):
         self.askVolume5 = EMPTY_INT
 
 
-########################################################################
-
-
 class VtBarData(VtBaseData):
     """K线数据"""
 
@@ -112,7 +107,6 @@ class VtBarData(VtBaseData):
         self.openInterest = EMPTY_INT  # 持仓量
 
 
-########################################################################
 class VtTradeData(VtBaseData):
     """成交数据类"""
 
@@ -140,7 +134,6 @@ class VtTradeData(VtBaseData):
         self.tradeTime = EMPTY_STRING  # 成交时间
 
 
-########################################################################
 class VtOrderData(VtBaseData):
     """订单数据类"""
 
@@ -174,7 +167,6 @@ class VtOrderData(VtBaseData):
         self.sessionID = EMPTY_INT  # 连接编号
 
 
-########################################################################
 class VtPositionData(VtBaseData):
     """持仓数据类"""
 
@@ -198,7 +190,6 @@ class VtPositionData(VtBaseData):
         self.positionProfit = EMPTY_FLOAT  # 持仓盈亏
 
 
-########################################################################
 class VtAccountData(VtBaseData):
     """账户数据类"""
 
@@ -221,7 +212,6 @@ class VtAccountData(VtBaseData):
         self.positionProfit = EMPTY_FLOAT  # 持仓盈亏
 
 
-########################################################################
 class VtErrorData(VtBaseData):
     """错误数据类"""
 
@@ -250,7 +240,6 @@ class VtLogData(VtBaseData):
         self.logContent = EMPTY_UNICODE  # 日志信息
 
 
-########################################################################
 class VtContractData(VtBaseData):
     """合约详细信息类"""
 
@@ -276,7 +265,6 @@ class VtContractData(VtBaseData):
         self.expiryDate = EMPTY_STRING  # 到期日
 
 
-########################################################################
 class VtSubscribeReq(object):
     """订阅行情时传入的对象类"""
 
@@ -294,7 +282,6 @@ class VtSubscribeReq(object):
         self.optionType = EMPTY_UNICODE  # 期权类型
 
 
-########################################################################
 class VtOrderReq(object):
     """发单时传入的对象类"""
 
@@ -320,7 +307,6 @@ class VtOrderReq(object):
         self.multiplier = EMPTY_STRING  # 乘数,IB专用
 
 
-########################################################################
 class VtCancelOrderReq(object):
     """撤单时传入的对象类"""
 
@@ -490,3 +476,67 @@ class Positions(object):
         data['PositionCost'] = self.avg_cost
         data['StockValue'] = self.value
         return data
+
+
+class Order_rec:
+    def __init__(self):
+        self.inst_type = ''
+        self.client_id = 0
+        self.acct_type = ''
+        self.acct = ''
+        self.ord_no = ''
+        self.symbol = ''
+        self.tradeside = ''
+        self.ord_qty = 0
+        self.ord_price = 0.0
+        self._filled_qty = 0
+        self._avg_px = 0.0
+        self.ord_type = ''
+        self.ord_time = ''
+        self.can_cancel = True
+        self.name = ''
+        self.cj_je = 0.00
+        self.cj_vol = 0
+        self.is_t0 = False
+
+    @property
+    def filled_qty(self):
+        return self._filled_qty
+
+    @property
+    def avg_px(self):
+        return self._avg_px
+
+    @property
+    def je(self):
+        if self.tradeside == '1' and self.can_cancel and self.cj_je >= 0:
+            return 0
+        else:
+            return self.cj_je * self.cj_vol
+
+    @property
+    def vtOrderID(self):
+        return str(self.client_id)
+
+    def ord(self):
+        return (self.inst_type, self.client_id, self.acct_type, self.acct, self.ord_no, self.symbol,
+                self.tradeside, self.ord_qty, self.ord_price, self.ord_type)
+
+    def update_cj(self, fill_qty, avg_px):
+        self.cj_vol = int(fill_qty) - self._filled_qty
+        self.cj_je = (float(avg_px) * int(fill_qty) -
+                      self._filled_qty * self._avg_px) / self.cj_vol
+        self._avg_px = float(avg_px)
+        self._filled_qty = int(fill_qty)
+        self._avg_px = float(avg_px)
+        tmp = self.can_cancel
+        if self.ord_qty <= self._filled_qty:
+            self.can_cancel = False
+        return tmp and not self.can_cancel
+
+    def __str__(self):
+        return 'client_id={0}, acct={1}, ord_no={2}, symbol={3}, tradeside={4},' \
+               'ord_qty={5}, ord_price={6}, filled_qty={7}, avg_px={8}, je={9}, ' \
+               'can_cancel={10}'.format(self.client_id, self.acct, self.ord_no, self.symbol,
+                                        self.tradeside, self.ord_qty, self.ord_price, self._filled_qty,
+                                        self._avg_px, self.je, self.can_cancel)

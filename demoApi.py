@@ -11,20 +11,11 @@ from eventEngine import *
 from vtobject import VtLogData
 
 
-# ----------------------------------------------------------------------
-def print_dict(d):
-    """打印API收到的字典，该函数主要用于开发时的debug"""
-    print('-' * 60)
-    for key, value in d.items():
-        print(key, ':', value)
-
-
-########################################################################
 class DemoMdApi(MdApi):
     """
     Demo中的行情API封装
     封装后所有数据自动推送到事件驱动引擎中，由其负责推送到各个监听该事件的回调函数上
-    
+
     对用户暴露的主动函数包括:
     登陆 login
     订阅合约 subscribe
@@ -98,7 +89,9 @@ class DemoMdApi(MdApi):
         if error['ErrorID'] == 0:
             log.logContent = u'行情服务器登陆成功'
         else:
-            log.logContent = u'登陆回报，错误代码：' + str(error['ErrorID']) + u',' + u'错误信息：' + error['ErrorMsg'].decode('gbk')
+            log.logContent = u'登陆回报，错误代码：' + \
+                str(error['ErrorID']) + u',' + u'错误信息：' + \
+                error['ErrorMsg'].decode('gbk')
 
         event.dict_['log'] = log
         self.__eventEngine.put(event)
@@ -112,10 +105,10 @@ class DemoMdApi(MdApi):
 
     # ----------------------------------------------------------------------
     def on_get_instrument(self, req, reqID):
-    # 合约约查询回报
-    # 由于该回报的推送速度极快，因此不适合全部存入队列中处理，
-    # 选择先储存在一个本地字典中，全部收集完毕后再推送到队列中
-    # 由于耗时过长目前使用其他进程读取）
+        # 合约约查询回报
+        # 由于该回报的推送速度极快，因此不适合全部存入队列中处理，
+        # 选择先储存在一个本地字典中，全部收集完毕后再推送到队列中
+        # 由于耗时过长目前使用其他进程读取）
         if req['ErrorID'] == 0:
             event = Event(type_=EVENT_INSTRUMENT)
             event.dict_['data'] = req['data']
@@ -126,7 +119,9 @@ class DemoMdApi(MdApi):
             event = Event(type_=EVENT_LOG)
             log = VtLogData()
             log.gatewayName = 'CastMdApi'
-            log.logContent = u'合约投资者回报，错误代码：' + str(req['ErrorID']) + u',' + u'错误信息：' + req['ErrorMsg'].decode('gbk')
+            log.logContent = u'合约投资者回报，错误代码：' + \
+                str(req['ErrorID']) + u',' + u'错误信息：' + \
+                req['ErrorMsg'].decode('gbk')
             event.dict_['log'] = log
             self.__eventEngine.put(event)
 
@@ -170,16 +165,15 @@ class DemoMdApi(MdApi):
 ########################################################################
 class DemoTdApi(TdApi):
 
-#     Demo中的交易API封装
-#     主动函数包括：
-#     login 登陆
-#     getInstrument 查询合约信息
-#     getAccount 查询账号资金
-#     getInvestor 查询投资者
-#     getPosition 查询持仓
-#     sendOrder 发单
-#     cancelOrder 撤单
-
+    #     Demo中的交易API封装
+    #     主动函数包括：
+    #     login 登陆
+    #     getInstrument 查询合约信息
+    #     getAccount 查询账号资金
+    #     getInvestor 查询投资者
+    #     getPosition 查询持仓
+    #     sendOrder 发单
+    #     cancelOrder 撤单
 
     # ----------------------------------------------------------------------
     def __init__(self, eventEngine):
@@ -247,7 +241,8 @@ class DemoTdApi(TdApi):
         """错误回报"""
         log = VtLogData()
         log.gatewayName = 'CastTdApi'
-        log.logContent = u'交易错误回报，' + u'错误信息：' + error['ErrorMsg'].decode('gbk')
+        log.logContent = u'交易错误回报，' + u'错误信息：' + \
+            error['ErrorMsg'].decode('gbk')
         event = Event(type_=EVENT_LOG)
         event.dict_['log'] = log
         self.__eventEngine.put(event)
@@ -262,7 +257,9 @@ class DemoTdApi(TdApi):
         if error['ErrorID'] == 0:
             log.logContent = u'交易服务器登陆成功'
         else:
-            log.logContent = u'登陆回报，错误代码：' + str(error['ErrorID']) + u',' + u'错误信息：' + error['ErrorMsg'].decode('gbk')
+            log.logContent = u'登陆回报，错误代码：' + \
+                str(error['ErrorID']) + u',' + u'错误信息：' + \
+                error['ErrorMsg'].decode('gbk')
 
         event.dict_['log'] = log
         self.__eventEngine.put(event)
@@ -287,7 +284,9 @@ class DemoTdApi(TdApi):
         if error['ErrorID'] == 0:
             log.logContent = u'交易服务器登出成功'
         else:
-            log.logContent = u'登出回报，错误代码：' + str(error['ErrorID']) + u',' + u'错误信息：' + error['ErrorMsg'].decode('gbk')
+            log.logContent = u'登出回报，错误代码：' + \
+                str(error['ErrorID']) + u',' + u'错误信息：' + \
+                error['ErrorMsg'].decode('gbk')
 
         event.dict_['log'] = log
         self.__eventEngine.put(event)
@@ -342,7 +341,9 @@ class DemoTdApi(TdApi):
             event = Event(type_=EVENT_LOG)
             log = VtLogData()
             log.gatewayName = 'CastTdApi'
-            log.logContent = u'账户查询回报，错误代码：' + str(req['ErrorID']) + u',' + u'错误信息：' + req['ErrorMsg'].decode('gbk')
+            log.logContent = u'账户查询回报，错误代码：' + \
+                str(req['ErrorID']) + u',' + u'错误信息：' + \
+                req['ErrorMsg'].decode('gbk')
             event.dict_['log'] = log
             self.__eventEngine.put(event)
 
@@ -357,14 +358,16 @@ class DemoTdApi(TdApi):
             event = Event(type_=EVENT_LOG)
             log = VtLogData()
             log.gatewayName = 'CastTdApi'
-            log.logContent = u'持仓查询回报，错误代码：' + str(req['ErrorID']) + u',' + u'错误信息：' + req['ErrorMsg'].decode('gbk')
+            log.logContent = u'持仓查询回报，错误代码：' + \
+                str(req['ErrorID']) + u',' + u'错误信息：' + \
+                req['ErrorMsg'].decode('gbk')
             event.dict_['log'] = log
             self.__eventEngine.put(event)
 
     # ----------------------------------------------------------------------
     def on_order(self, req, reqID):
         """报单回报"""
-        
+
         # 更新最大报单编号
         rec = req['data']
         self.__query_tick = 0
@@ -406,7 +409,9 @@ class DemoTdApi(TdApi):
         event = Event(type_=EVENT_LOG)
         log = VtLogData()
         log.gatewayName = 'CastTdApi'
-        log.logContent = u'发单错误回报，错误代码：' + str(error['ErrorID']) + u',' + u'错误信息：' + error['ErrorMsg'].decode('gbk')
+        log.logContent = u'发单错误回报，错误代码：' + \
+            str(error['ErrorID']) + u',' + u'错误信息：' + \
+            error['ErrorMsg'].decode('gbk')
         event.dict_['log'] = log
         self.__eventEngine.put(event)
 
@@ -416,7 +421,9 @@ class DemoTdApi(TdApi):
         event = Event(type_=EVENT_LOG)
         log = VtLogData()
         log.gatewayName = 'CastTdApi'
-        log.logContent = u'撤单错误回报，错误代码：' + str(error['ErrorID']) + u',' + u'错误信息：' + error['ErrorMsg'].decode('gbk')
+        log.logContent = u'撤单错误回报，错误代码：' + \
+            str(error['ErrorID']) + u',' + u'错误信息：' + \
+            error['ErrorMsg'].decode('gbk')
         event.dict_['log'] = log
         self.__eventEngine.put(event)
 

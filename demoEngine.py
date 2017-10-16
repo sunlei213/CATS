@@ -65,7 +65,8 @@ class MainEngine:
 
         # 设置接口轮询
         if gatewayModule.gatewayQryEnabled:
-            self.gatewayDict[gatewayName].setQryEnabled(gatewayModule.gatewayQryEnabled)
+            self.gatewayDict[gatewayName].setQryEnabled(
+                gatewayModule.gatewayQryEnabled)
 
         # 保存接口详细信息
         d = {
@@ -161,7 +162,8 @@ class MainEngine:
     # ----------------------------------------------------------------------
     def sendOrder(self, instrumentid, exchangeid, price, pricetype, volume, direction):
         """发单"""
-        self.td.sendOrder(instrumentid, exchangeid, price, pricetype, volume, direction)
+        self.td.sendOrder(instrumentid, exchangeid, price,
+                          pricetype, volume, direction)
 
     # ----------------------------------------------------------------------
     def cancelOrder(self, orderref):
@@ -237,6 +239,14 @@ class MainEngine:
         """查询引擎中所有上层应用的信息"""
         return self.appDetailList
 
+    def getacc_list(self):
+        """获取账户列表"""
+        return self.dataEngine.getacc_list()
+
+    def getProtfolio(self, account):
+        """获取指定账户信息"""
+        return self.dataEngine.getPosition(account)
+
 
 class DataEngine(object):
     """数据引擎"""
@@ -290,6 +300,7 @@ class DataEngine(object):
 
     # ----------------------------------------------------------------------
     def update_acc(self, event):
+        # 更新账户数据
         data = event.dict_['data']
         sub_stocks = set()
         print(data)
@@ -318,9 +329,11 @@ class DataEngine(object):
                 vol = stocks[d['InstrumentID']][0]
                 pri = stocks[d['InstrumentID']][1]
                 stocks[d['InstrumentID']][0] += d['Volume']
-                stocks[d['InstrumentID']][1] = (vol * pri + d['Volume'] * d['Price']) / (vol + d['Volume'])
+                stocks[d['InstrumentID']][1] = (
+                    vol * pri + d['Volume'] * d['Price']) / (vol + d['Volume'])
             else:
-                stocks[d['InstrumentID']] = [d['Volume'], d['Price'], '', d['Volume'] * d['Price']]
+                stocks[d['InstrumentID']] = [d['Volume'],
+                                             d['Price'], '', d['Volume'] * d['Price']]
             self.stockDict[d['ExchangeInstID']] = stocks
         elif d['Direction'] == '2':
             acct = self.accountDict[d['ExchangeInstID']]
@@ -484,3 +497,14 @@ class DataEngine(object):
         self.eventEngine.register((EVENT_ACCOUNT + 'data'), self.update_acc)
         self.eventEngine.register((EVENT_TRADE + 'data'), self.update_trade)
         self.eventEngine.register((EVENT_ORDER + 'start'), self.start_ord)
+
+    def getacc_list(self):
+        """获取账户列表"""
+        return self.Portfolio.keys()
+
+    def getProtfolio(self, account):
+        """获取指定账户信息"""
+        if account in self.Portfolio:
+            return self.Portfolio[account]
+        else:
+            return None
