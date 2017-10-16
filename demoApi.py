@@ -101,8 +101,6 @@ class DemoMdApi(MdApi):
             for instrument in self.__setSubscribed:
                 self.subscribe(instrument[0], instrument[1])
 
-        self.subscribe('510050', 'SSE')
-
     # ----------------------------------------------------------------------
     def on_get_instrument(self, req, reqID):
         # 合约约查询回报
