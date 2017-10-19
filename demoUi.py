@@ -49,7 +49,8 @@ class LogMonitor(QtWidgets.QTableWidget):
         self.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)  # 设为不可编辑状态
 
         # 自动调整列宽
-        self.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        self.horizontalHeader().setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
 
         # ----------------------------------------------------------------------
@@ -555,7 +556,7 @@ class MarketDataMonitor(QtWidgets.QTableWidget):
     # ----------------------------------------------------------------------
     def updateData(self, event):
         """"""
-        data = event.dict_['data']
+        data = event.dict_['data'].read_data()
         instrumentid = data['vtSymbol']
 
         # 如果之前已经收到过这个账户的数据, 则直接更新
@@ -666,7 +667,8 @@ class LoginWidget(QtWidgets.QDialog):
         mdAddress = str(self.editMdAddress.text())
         tdAddress = str(self.editTdAddress.text())
 
-        self.__mainEngine.login(userid, mdPassword, tdPassword, mdAddress, tdAddress)
+        self.__mainEngine.login(
+            userid, mdPassword, tdPassword, mdAddress, tdAddress)
         self.close()
 
     # ----------------------------------------------------------------------
@@ -984,8 +986,10 @@ class TradingWidget(QtWidgets.QWidget):
             self.labelReturn.setText('')
 
             # 重新注册事件监听
-            self.__eventEngine.unregister(EVENT_MARKETDATA_CONTRACT + self.instrumentid, self.signal.emit)
-            self.__eventEngine.register(EVENT_MARKETDATA_CONTRACT + instrumentid, self.signal.emit)
+            self.__eventEngine.unregister(
+                EVENT_MARKETDATA_CONTRACT + self.instrumentid, self.signal.emit)
+            self.__eventEngine.register(
+                EVENT_MARKETDATA_CONTRACT + instrumentid, self.signal.emit)
 
             # 订阅合约
             self.__mainEngine.subscribe(instrumentid[:6], instrument.exchange)
@@ -996,7 +1000,7 @@ class TradingWidget(QtWidgets.QWidget):
     # ----------------------------------------------------------------------
     def updateMarketData(self, event):
         """更新行情"""
-        data = event.dict_['data']
+        data = event.dict_['data'].read_data()
 
         if data['vtSymbol'] == self.instrumentid:
             self.labelBidPrice1.setText(str(data['buyPrice1']))
@@ -1048,11 +1052,14 @@ class TradingWidget(QtWidgets.QWidget):
         instrument = self.__mainEngine.selectInstrument(instrumentid)
         if instrument:
             exchangeid = str(self.lineAcc.text())
-            direction = self.dictDirectionReverse[str(self.comboDirection.currentText())]
+            direction = self.dictDirectionReverse[str(
+                self.comboDirection.currentText())]
             price = float(self.spinPrice.value())
             volume = int(self.spinVolume.value())
-            pricetype = self.dictPriceTypeReverse[str(self.comboPriceType.currentText())]
-            self.__mainEngine.sendOrder(instrumentid, exchangeid, price, pricetype, volume, direction)
+            pricetype = self.dictPriceTypeReverse[str(
+                self.comboPriceType.currentText())]
+            self.__mainEngine.sendOrder(
+                instrumentid, exchangeid, price, pricetype, volume, direction)
 
 
 ########################################################################
@@ -1142,8 +1149,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.positionM = PositionMonitor(self.__eventEngine, self)
         self.tradeM = TradeMonitor(self.__eventEngine, self)
         self.orderM = OrderMonitor(self.__eventEngine, self.__mainEngine, self)
-        self.marketdataM = MarketDataMonitor(self.__eventEngine, self.__mainEngine, self)
-        self.tradingW = TradingWidget(self.__eventEngine, self.__mainEngine, self.orderM, self)
+        self.marketdataM = MarketDataMonitor(
+            self.__eventEngine, self.__mainEngine, self)
+        self.tradingW = TradingWidget(
+            self.__eventEngine, self.__mainEngine, self.orderM, self)
 
         righttab = QtWidgets.QTabWidget()
         righttab.addTab(self.positionM, u'持仓')
@@ -1216,7 +1225,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """"""
         data = event.dict_['data']
 
-        self.setWindowTitle(u'欢迎使用vn.py框架Demo  ' + data['InvestorName'].decode('GBK'))
+        self.setWindowTitle(u'欢迎使用vn.py框架Demo  ' +
+                            data['InvestorName'].decode('GBK'))
 
     # ----------------------------------------------------------------------
     def updateLog(self, event):

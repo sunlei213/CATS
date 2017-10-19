@@ -8,7 +8,7 @@
 
 from vncast import MdApi, TdApi
 from eventEngine import *
-from vtobject import VtLogData
+from vtobject import *
 
 
 class DemoMdApi(MdApi):
@@ -131,8 +131,10 @@ class DemoMdApi(MdApi):
         # 常规行情事件
         if not data:
             return
+        tick = VtTickData()
+        tick.set_data(data)
         event1 = Event(type_=EVENT_MARKETDATA)
-        event1.dict_['data'] = data
+        event1.dict_['data'] = tick
         self.__eventEngine.put(event1)
 
         # 特定合约行情事件
@@ -397,7 +399,8 @@ class DemoTdApi(TdApi):
         self.__eventEngine.put(event)
 
         # 特定合约成交事件
-        event2 = Event(type_=(EVENT_TRADE_CONTRACT + str(req.client_id)))
+        event2 = Event(type_=(EVENT_TRADE_CONTRACT +
+                              str(req['data'].client_id)))
         event2.dict_['data'] = req['data']
         self.__eventEngine.put(event2)
 

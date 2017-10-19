@@ -57,29 +57,123 @@ class VtTickData(VtBaseData):
         self.lowerLimit = EMPTY_FLOAT  # 跌停价
 
         # 五档行情
-        self.bidPrice1 = EMPTY_FLOAT
-        self.bidPrice2 = EMPTY_FLOAT
-        self.bidPrice3 = EMPTY_FLOAT
-        self.bidPrice4 = EMPTY_FLOAT
-        self.bidPrice5 = EMPTY_FLOAT
+        self.sellPrice1 = EMPTY_FLOAT
+        self.sellPrice2 = EMPTY_FLOAT
+        self.sellPrice3 = EMPTY_FLOAT
+        self.sellPrice4 = EMPTY_FLOAT
+        self.sellPrice5 = EMPTY_FLOAT
 
-        self.askPrice1 = EMPTY_FLOAT
-        self.askPrice2 = EMPTY_FLOAT
-        self.askPrice3 = EMPTY_FLOAT
-        self.askPrice4 = EMPTY_FLOAT
-        self.askPrice5 = EMPTY_FLOAT
+        self.buyPrice1 = EMPTY_FLOAT
+        self.buyPrice2 = EMPTY_FLOAT
+        self.buyPrice3 = EMPTY_FLOAT
+        self.buyPrice4 = EMPTY_FLOAT
+        self.buyPrice5 = EMPTY_FLOAT
 
-        self.bidVolume1 = EMPTY_INT
-        self.bidVolume2 = EMPTY_INT
-        self.bidVolume3 = EMPTY_INT
-        self.bidVolume4 = EMPTY_INT
-        self.bidVolume5 = EMPTY_INT
+        self.sellVolume1 = EMPTY_INT
+        self.sellVolume2 = EMPTY_INT
+        self.sellVolume3 = EMPTY_INT
+        self.sellVolume4 = EMPTY_INT
+        self.sellVolume5 = EMPTY_INT
 
-        self.askVolume1 = EMPTY_INT
-        self.askVolume2 = EMPTY_INT
-        self.askVolume3 = EMPTY_INT
-        self.askVolume4 = EMPTY_INT
-        self.askVolume5 = EMPTY_INT
+        self.buyVolume1 = EMPTY_INT
+        self.buyVolume2 = EMPTY_INT
+        self.buyVolume3 = EMPTY_INT
+        self.buyVolume4 = EMPTY_INT
+        self.buyVolume5 = EMPTY_INT
+
+    def set_data(self, data):
+        self.symbol = data['symbol']
+        self.exchange = data['exchange']
+        self.vtSymbol = data['vtSymbol']
+
+        self.lastPrice = data['lastPrice']
+        self.volume = data['volume']
+        # self.openInterest = data['OpenInterest']
+        self.time = data['UpdateTime']
+        self.date = data['TradingDay']
+        self.datetime = data['datetime']
+
+        self.openPrice = data['openPrice']
+        self.highPrice = data['highPrice']
+        self.lowPrice = data['lowPrice']
+        self.preClosePrice = data['preClosePrice']
+
+        #self.upperLimit = data['UpperLimitPrice']
+        #self.lowerLimit = data['LowerLimitPrice']
+
+        # LTS有5档行情
+        self.sellPrice1 = data['sellPrice1']
+        self.sellVolume1 = data['sellVolume1']
+        self.buyPrice1 = data['buyPrice1']
+        self.buyVolume1 = data['buyVolume1']
+
+        self.sellPrice2 = data['sellPrice2']
+        self.sellVolume2 = data['sellVolume2']
+        self.buyPrice2 = data['buyPrice2']
+        self.buyVolume2 = data['buyVolume2']
+
+        self.sellPrice3 = data['sellPrice3']
+        self.sellVolume3 = data['sellVolume3']
+        self.buyPrice3 = data['buyPrice3']
+        self.buyVolume3 = data['buyVolume3']
+
+        self.sellPrice4 = data['sellPrice4']
+        self.sellVolume4 = data['sellVolume4']
+        self.buyPrice4 = data['buyPrice4']
+        self.buyVolume4 = data['buyVolume4']
+
+        self.sellPrice5 = data['sellPrice5']
+        self.sellVolume5 = data['sellVolume5']
+        self.buyPrice5 = data['buyPrice5']
+        self.buyVolume5 = data['buyVolume5']
+
+    def read_data(self):
+        data = {}
+        data['symbol'] = self.symbol
+        data['exchange'] = self.exchange
+        data['vtSymbol'] = self.vtSymbol
+
+        data['lastPrice'] = self.lastPrice
+        data['volume'] = self.volume
+        # self.openInterest = data['OpenInterest']
+        data['UpdateTime'] = self.time
+        data['TradingDay'] = self.date
+        data['datetime'] = self.datetime
+
+        data['openPrice'] = self.openPrice
+        data['highPrice'] = self.highPrice
+        data['lowPrice'] = self.lowPrice
+        data['preClosePrice'] = self.preClosePrice
+
+        #self.upperLimit = data['UpperLimitPrice']
+        #self.lowerLimit = data['LowerLimitPrice']
+
+        # LTS有5档行情
+        data['sellPrice1'] = self.sellPrice1
+        data['sellVolume1'] = self.sellVolume1
+        data['buyPrice1'] = self.buyPrice1
+        data['buyVolume1'] = self.buyVolume1
+
+        data['sellPrice2'] = self.sellPrice2
+        data['sellVolume2'] = self.sellVolume2
+        data['buyPrice2'] = self.buyPrice2
+        data['buyVolume2'] = self.buyVolume2
+
+        data['sellPrice3'] = self.sellPrice3
+        data['sellVolume3'] = self.sellVolume3
+        data['buyPrice3'] = self.buyPrice3
+        data['buyVolume3'] = self.buyVolume3
+
+        data['sellPrice4'] = self.sellPrice4
+        data['sellVolume4'] = self.sellVolume4
+        data['buyPrice4'] = self.buyPrice4
+        data['buyVolume4'] = self.buyVolume4
+
+        data['sellPrice5'] = self.sellPrice5
+        data['sellVolume5'] = self.sellVolume5
+        data['buyPrice5'] = self.buyPrice5
+        data['buyVolume5'] = self.buyVolume5
+        return data
 
 
 class VtBarData(VtBaseData):
@@ -379,8 +473,8 @@ class Portfolio(object):
 
     def update_mkt(self, data):
         """更新价格"""
-        stock = data['vtSymbol']
-        pri = data['lastPrice']
+        stock = data.vtSymbol
+        pri = data.lastPrice
         if stock in self.long_positions:
             self.long_positions[stock].update_mkt(pri)
 
@@ -523,6 +617,8 @@ class Order_rec:
                 self.tradeside, self.ord_qty, self.ord_price, self.ord_type)
 
     def update_cj(self, fill_qty, avg_px):
+        if not self.can_cancel:
+            return False
         self.cj_vol = int(fill_qty) - self._filled_qty
         self.cj_je = (float(avg_px) * int(fill_qty) -
                       self._filled_qty * self._avg_px) / self.cj_vol

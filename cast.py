@@ -7,7 +7,7 @@ Created on Wed Aug 30 09:09:35 2017
 from queue import Queue, Empty
 from threading import Thread
 from time import sleep
-from collections import defaultdict, namedtuple
+from collections import defaultdict, namedtuple, OrderedDict
 import dbf
 from math import ceil
 from PyQt5.QtCore import QTimer
@@ -28,7 +28,7 @@ EVENT_ACCOUNT = 'eAccount.'  # 账户回报事件
 EVENT_CONTRACT = 'eContract.'  # 合约基础信息回报事件
 EVENT_ERROR = 'eError.'  # 错误回报事件
 Order_rec = namedtuple('Order_rec', ['inst_type', 'client_id', 'acct_type', 'acct',
-                                     'order_id', 'symbol', 'tradeside', 'ord_qty', 'ord_price',
+                                     'ord_no', 'symbol', 'tradeside', 'ord_qty', 'ord_price',
                                      'ord_type'])
 
 
@@ -38,15 +38,15 @@ class EventEngine(object):
     事件驱动引擎
     事件驱动引擎中所有的变量都设置为了私有，这是为了防止不小心
     从外部修改了这些变量的值或状态，导致bug。
-    
+
     变量说明
     __queue：私有变量，事件队列
     __active：私有变量，事件引擎开关
     __thread：私有变量，事件处理线程
     __timer：私有变量，计时器
     __handlers：私有变量，事件处理函数字典
-    
-    
+
+
     方法说明
     __run: 私有方法，事件处理线程连续运行用
     __process: 私有方法，处理事件，调用注册在引擎中的监听函数
@@ -56,17 +56,17 @@ class EventEngine(object):
     register：公共方法，向引擎中注册监听函数
     unregister：公共方法，向引擎中注销监听函数
     put：公共方法，向事件队列中存入新的事件
-    
+
     事件监听函数必须定义为输入参数仅为一个event对象，即：
-    
+
     函数
     def func(event)
         ...
-    
+
     对象方法
     def method(self, event)
         ...
-        
+
     """
 
     # ----------------------------------------------------------------------
@@ -98,7 +98,8 @@ class EventEngine(object):
         """引擎运行"""
         while self.__active:
             try:
-                event = self.__queue.get(block=True, timeout=1)  # 获取事件的阻塞时间设为1秒
+                event = self.__queue.get(
+                    block=True, timeout=1)  # 获取事件的阻塞时间设为1秒
                 self.__process(event)
             except Empty:
                 pass
@@ -174,7 +175,7 @@ class EventEngine(object):
     # ----------------------------------------------------------------------
     def unregister(self, type_, handler):
         """注销事件处理函数监听"""
-        # 尝试获取该事件类型对应的处理函数列表，若无则忽略该次注销请求   
+        # 尝试获取该事件类型对应的处理函数列表，若无则忽略该次注销请求
         handler_list = self.__handlers[type_]
 
         # 如果该函数存在于列表中，则移除
@@ -220,7 +221,7 @@ class CastMid(object):  # 资产订单处理类
                        'wt': r'd:\cast\instructions.dbf',
                        'hb': r'd:\cast\order_updates.dbf',
                        'zh': r'd:\cast\asset.dbf'}
-        self._wt_list = {}
+        self._wt_list = OrderedDict()
         self._cj_num = 0
         self._client_id = 1000
         self._zh_list = {}
@@ -230,6 +231,7 @@ class CastMid(object):  # 资产订单处理类
         self._zh_db = None
         self._ee = engine
         self._time_tick = 0
+
         if self._ee:
             self._ee.register(EVENT_TIMER, self._on_get_cj)
 
@@ -260,7 +262,8 @@ class CastMid(object):  # 资产订单处理类
         buy = {}
         for stock in stocks:
             try:
-                recodes = self._hq_db.query('select * where s1=="{}"'.format(stock))
+                recodes = self._hq_db.query(
+                    'select * where s1=="{}"'.format(stock))
             except:
                 recodes = []
             if len(recodes):
@@ -291,7 +294,8 @@ class CastMid(object):  # 资产订单处理类
         return self._wt_list
 
     def order(self, exchangeid, stock, price, pricetype, volume, direction):
-        rec = Order_rec('O', self._client_id, 'S0', exchangeid, '', stock, direction, volume, price, pricetype)
+        rec = Order_rec('O', self._client_id, 'S0', exchangeid,
+                        '', stock, direction, volume, price, pricetype)
         je = price * volume
         if direction.strip() == '1':
             self._zh_list[exchangeid]['zjky'] -= je
@@ -306,12 +310,24 @@ class CastMid(object):  # 资产订单处理类
         return self._client_id - 1
 
     def cancel_order(self, exchangeid, orderid):
-        rec = Order_rec('C', self._client_id, 'S0', exchangeid, orderid, '', '', 0, 0.0, '')
-        self._wt_list[self._client_id] = [rec, '', 0, 0.0, 0.0, False]
+        rec = Order_rec('C', self._client_id, 'S0', exchangeid,
+                        orderid, '', '', 0, 0.0, '')
+        self._wt_list[str(self._client_id)] = [rec, '', 0, 0.0, 0.0, False]
         self._ord_db.open()
         self._ord_db.append(rec)
         self._ord_db.close()
         self._client_id += 1
+        for cl_id in self._wt_list.keys():
+            rec1 = self._wt_list[cl_id][0]
+            if self._wt_list[cl_id][5] and self._wt_list[cl_id][1] == rec.ord_no.strip():
+                self._wt_list[cl_id][5] = False
+                if rec1.tradeside == '1':
+                    self._zh_list[rec1.acct]['zjky'] += self._wt_list[cl_id][4]
+                if rec1.tradeside == '2':
+                    self._zh_list[rec1.acct][rec1.symbol][0] += (
+                        rec1.ord_qty - self._wt_list[cl_id][2])
+        event = Event(EVENT_TRADE)
+        self._ee.put(event)
 
     def _on_get_cj(self, event):
         self._time_tick += 1
@@ -347,15 +363,12 @@ class CastMid(object):  # 资产订单处理类
             self._ee.put(event)
 
     def _wt_cancel(self, rec, normal=True):
+        cl_id = rec.client_id.strip()
+        ord_no = self._wt_list[cl_id][0].ord_no
         for cl_id in self._wt_list.keys():
-            rec1 = self._wt_list[cl_id][0]
-            if self._wt_list[cl_id][5] and self._wt_list[cl_id][1] == rec.order_od.strip():
+            # print(self._wt_list[cl_id],ord_no)
+            if self._wt_list[cl_id][5] and self._wt_list[cl_id][1] == ord_no:
                 self._wt_list[cl_id][5] = False
-                if normal:
-                    if rec1.tradeside == '1':
-                        self._zh_list[rec1.acct]['zjky'] += self._wt_list[cl_id][4]
-                    if rec1.tradeside == '2':
-                        self._zh_list[rec1.symbol] += (rec1.ord_qty - self._wt_list[cl_id][2])
 
     def _wt_buy(self, rec, normal=True):
         cl_id = rec.client_id.strip()
@@ -365,16 +378,22 @@ class CastMid(object):  # 资产订单处理类
                     self._zh_list[rec.acct.strip()][rec.symbol.strip()][0] += (int(rec.filled_qty) -
                                                                                self._wt_list[cl_id][2])
                 else:
-                    self._zh_list[rec.acct.strip()][rec.symbol.strip()] = [0, 0.0]
-                    self._zh_list[rec.acct.strip()][rec.symbol.strip()][0] = int(rec.filled_qty)
-                    self._zh_list[rec.acct.strip()][rec.symbol.strip()][1] = float(rec.avg_px)
+                    self._zh_list[rec.acct.strip()][rec.symbol.strip()] = [
+                        0, 0.0]
+                    self._zh_list[rec.acct.strip()][rec.symbol.strip()][0] = int(
+                        rec.filled_qty)
+                    self._zh_list[rec.acct.strip()][rec.symbol.strip()
+                                                    ][1] = float(rec.avg_px)
+            je = (int(rec.filled_qty) * float(rec.avg_px)) - \
+                (self._wt_list[cl_id][2] * self._wt_list[cl_id][3])
             self._wt_list[cl_id][2] = int(rec.filled_qty)
             self._wt_list[cl_id][3] = float(rec.avg_px)
-            self._wt_list[cl_id][4] -= (int(rec.filled_qty) * float(rec.avg_px))
+            self._wt_list[cl_id][4] -= je
             if self._wt_list[cl_id][0].ord_qty <= self._wt_list[cl_id][2]:
                 self._wt_list[cl_id][5] = False
                 if self._wt_list[cl_id][4] > 0 and normal:
-                    self._zh_list[rec.acct.strip()]['zjky'] += self._wt_list[cl_id][4]
+                    self._zh_list[rec.acct.strip(
+                    )]['zjky'] += self._wt_list[cl_id][4]
 
     def _wt_sell(self, rec, normal=True):
         cl_id = rec.client_id.strip()
@@ -393,9 +412,11 @@ class CastMid(object):  # 资产订单处理类
         self._wt_list[cl_id][5] = False
         if normal:
             if rec.tradeside == '1':
-                self._zh_list[rec.acct.strip()]['zjky'] += self._wt_list[cl_id][4]
+                self._zh_list[rec.acct.strip(
+                )]['zjky'] += self._wt_list[cl_id][4]
             if rec.tradeside == '2':
-                self._zh_list[rec.symbol] += (rec.ord_qty - self._wt_list[cl_id][2])
+                self._zh_list[rec.acct.strip(
+                )][rec.symbol][0] += (rec.ord_qty - self._wt_list[cl_id][2])
 
     def _get_wt(self):
         self._ord_db.open()
@@ -407,9 +428,20 @@ class CastMid(object):  # 资产订单处理类
                                rec.ord_type.strip())
             je = rec.ord_qty * rec.ord_price
             if rec.inst_type.strip() == 'O':
-                self._wt_list[str(rec.client_id)] = [record, '', 0, 0.0, je, True]
+                if rec.tradeside.strip() == '1':
+                    self._wt_list[str(rec.client_id)] = [
+                        record, '', 0, 0.0, je, True]
+                else:
+                    self._wt_list[str(rec.client_id)] = [
+                        record, '', 0, 0.0, 0.0, True]
             else:
-                self._wt_list[str(rec.client_id)] = [record, '', 0, 0.0, 0.0, False]
+                self._wt_list[str(rec.client_id)] = [
+                    record, '', 0, 0.0, 0.0, False]
+            if rec.inst_type.strip() == 'C':
+                for cl_id in self._wt_list.keys():
+                    if self._wt_list[cl_id][5] and self._wt_list[cl_id][1] == rec.ord_no.strip():
+                        self._wt_list[cl_id][5] = False
+
             rec_no += 1
         self._ord_db.close()
         return rec_no
@@ -423,9 +455,11 @@ class Trading(object):  # 策略主体
         self._mdi = mdi
         self._rate = 0.0
         self._tick = 0
-        self._wt_list = {}
+        self._wt_list = OrderedDict()
         self._is_chk = False
         self._active = False
+        self._pr_204001 = [0, 0, 0]
+        self._is_down = False
 
     def _onChoice(self, ev):  # 价格判断
         self._tick += 1
@@ -433,57 +467,102 @@ class Trading(object):  # 策略主体
         #    event = Event(self.EVENT_CHK)  #发送查成交请求
         # print('check')
         #    self._ee.put(event)
-        if self._tick % 3 == 0:
-            set_ord = False
-            # print('choice')
-            buy, sell = self._mdi.get_price(self._stocks.keys())
-            stock = ''
-            if not sell: return
-            for key in self._stocks.keys():
-                rate = (self._stocks[key] + (100 - sell[key][0]) * 365) / 2
-                if rate > self._rate:
-                    self._rate = rate
-                    stock = key
-                    set_ord = True
-                    print(stock, self._stocks[key], (100 - sell[key][0]) * 365, self._rate)
-            if set_ord:
-                pr, _ = self._mdi.get_price(['204001'])
-                bv = buy[stock][1] + buy[stock][3] + buy[stock][4]
-                sv = sell[stock][1] * 1.5
-                print(stock, self._rate, pr['204001'][0], bv, sv)
-                # if self._rate > pr['204001'][0] and
-                if bv > sv and sell[stock][0]<99.995:  # 符合规则，发送委托消息
-                    event = Event(EVENT_ORDER)
-                    event.dict_['stock'] = '{0}.SH'.format(stock)
-                    event.dict_['price'] = sell[stock][0]
-                    event.dict_['vol'] = sell[stock][1]
-                    print(stock, sell[stock])
-                    self._ee.put(event)
-                    print(stock, self._rate, pr['204001'][0], bv, sv)
-                else:
-                    self._rate = 0.0
+        if self._tick % 60 == 0:
+            pr, _ = self._mdi.get_price(['204001'])
+            self._pr_204001[0] = self._pr_204001[1]
+            self._pr_204001[1] = self._pr_204001[2]
+            self._pr_204001[2] = pr['204001'][0]
+            print(self._pr_204001)
+            if self._pr_204001[2] < self._pr_204001[1] < self._pr_204001[0]:
+                self._is_down = True
+            elif self._pr_204001[2] > self._pr_204001[1] > self._pr_204001[0]:
+                self._is_down = False
 
-    def _on_ord(self, ev):  # 委托买入事件
-        zh = self._mdi.get_zh_list
-        if len(zh) == 0:
-            return
-        bv_max = int(ev.dict_['vol'] / len(zh))
-        if bv_max < 100:
-            bv_max = 100
-        for key in zh:
-            zc = self._mdi.get_zc(key)
-            zjky = zc['zjky']
-            if zjky > 0:
-                amon = int((zjky / ev.dict_['price']) / 100) * 100
-                if amon < 100:
-                    continue
-                if amon > bv_max:
-                    amon = bv_max
-                ord_id = self._mdi.order(key, ev.dict_['stock'], ev.dict_['price'], '0', amon, '1')
-                self._wt_list[str(ord_id)] = (key, ev.dict_['stock'], ev.dict_['price'], amon)
+        is_up = False
+        if is_up:
+            cancel = self._mdi.get_can_cancel()
+            for key in cancel.keys():
+                self._mdi.cancel_order(cancel[key][0].acct, cancel[key][1])
+            zh = self._mdi.get_zh_list
+            buy, sell = self._mdi.get_price(self._stocks.keys())
+            for key in zh:
+                zc = self._mdi.get_zc(key)
+                for stock in zc.keys():
+                    if stock != 'zjky' and zc[stock][0] > 0:
+                        event = Event(EVENT_ORDER)
+                        event.dict_['account'] = key
+                        event.dict_['stock'] = stock
+                        event.dict_['price'] = buy[stock[:6]][0]
+                        event.dict_['vol'] = zc[stock][0]
+                        event.dict_['direct'] = False
+                        self._ee.put(event)
+
+        if self._is_down:
+            if self._tick % 3 == 0:
+                set_ord = False
+                # print('choice')
+                buy, sell = self._mdi.get_price(self._stocks.keys())
+                stock = ''
+                if not sell:
+                    return
+                for key in self._stocks.keys():
+                    rate = (self._stocks[key] + (100 - sell[key][0]) * 365) / 2
+                    if rate > self._rate:
+                        self._rate = rate
+                        stock = key
+                        set_ord = True
+                        print(
+                            stock, self._stocks[key], (100 - sell[key][0]) * 365, self._rate)
+                if set_ord:
+                    bv = buy[stock][1] + buy[stock][3] + buy[stock][4]
+                    sv = sell[stock][1] * 1.5
+                    print(stock, self._rate, bv, sv)
+                    # if self._rate > pr['204001'][0] and
+                    if sell[stock][0] < 110:  # bv > sv and 符合规则，发送委托消息
+                        zh = self._mdi.get_zh_list
+                        if len(zh) == 0:
+                            return
+                        bv_max = int(sell[stock][1] / len(zh))
+                        if bv_max < 100:
+                            bv_max = 100
+                        for key in zh:
+                            zc = self._mdi.get_zc(key)
+                            zjky = zc['zjky']
+                            if zjky > 0:
+                                amon = int((zjky / sell[stock][0] / 100) * 100)
+                                if amon < 100:
+                                    continue
+                                if amon > bv_max:
+                                    amon = bv_max
+                                event = Event(EVENT_ORDER)
+                                event.dict_['account'] = key
+                                event.dict_['stock'] = '{0}.SH'.format(stock)
+                                event.dict_['price'] = sell[stock][0]
+                                event.dict_['vol'] = amon
+                                event.dict_['direct'] = True
+                                print(stock, sell[stock])
+                                self._ee.put(event)
+                                print(stock, self._rate, bv, sv)
+                    else:
+                        print(self._rate)
+                        self._rate = 0.0
+
+    def _on_ord(self, ev):  # 委托买入卖出事件
+        ord_id = 0
+        amon = ev.dict_['vol']
+        key = ev.dict_['account']
+        if ev.dict_['direct']:
+            ord_id = self._mdi.order(key, ev.dict_['stock'], ev.dict_[
+                                     'price'], '0', amon, '1')
+        else:
+            ord_id = self._mdi.order(key, ev.dict_['stock'], ev.dict_[
+                                     'price'], '0', amon, '2')
+        if ord_id:
+            self._wt_list[str(ord_id)] = [key, ev.dict_['stock'], ev.dict_['price'], amon,
+                                          0, ev.dict_['direct']]
 
     def _on_chk(self, ev):  # 成交查询事件，并发+0.001卖出
-        # print('check wt')
+        print('check wt')
         if not self._wt_list:
             if not self._mdi.get_can_cancel():
                 self._rate = 0.0
@@ -491,13 +570,20 @@ class Trading(object):  # 策略主体
         wt = self._mdi.get_wt_list
         key_list = tuple(self._wt_list.keys())
         for key in key_list:
-            if self._wt_list[key][3] <= wt[key][2]:
-                if self._wt_list[key][2] < 99.97:
-                    price = 99.98
-                else:
-                    price = self._wt_list[key][2] + 0.001
-                self._mdi.order(self._wt_list[key][0], self._wt_list[key][1],
-                                price, '0', self._wt_list[key][3], '2')
+            self._wt_list[key][4] = wt[key][2]
+            if self._wt_list[key][3] <= wt[key][2] and self._wt_list[key][5]:
+                # if self._wt_list[key][2] < 99.97:
+                #    price = 99.98
+                # else:
+                price = self._wt_list[key][2] + 0.001
+                event = Event(EVENT_ORDER)
+                event.dict_['account'] = self._wt_list[key][0]
+                event.dict_['stock'] = self._wt_list[key][1]
+                event.dict_['price'] = price
+                event.dict_['vol'] = self._wt_list[key][3]
+                event.dict_['direct'] = False
+                self._ee.put(event)
+            print(key, wt[key][5])
             if not wt[key][5]:
                 del self._wt_list[key]
 
@@ -507,24 +593,37 @@ class Trading(object):  # 策略主体
         print("Press 'D' to exit...")
         while self._active:
             today = datetime.now()
-            now_time = '{0:02d}:{1:02d}:{2:02d}'.format(today.hour, today.minute, today.second)
+            now_time = '{0:02d}:{1:02d}:{2:02d}'.format(
+                today.hour, today.minute, today.second)
             print(now_time)
             # buy,sell = self._mdi.get_price(self._stocks.keys())
             # 注册事件处理函数
-            if is_not_reg[0] and '09:30:00' < now_time < '14:20:00':
+            if is_not_reg[0] and '09:30:00' < now_time < '14:50:00':
                 zh = self._mdi.get_zh_list
+                wt = self._mdi.get_can_cancel()
+                if wt:
+                    for key in wt:
+                        rec = wt[key]
+                        self._wt_list[key] = [rec[0].acct, rec[0].symbol, rec[0].ord_price,
+                                              rec[0].ord_qty, rec[2], (rec[0].tradeside == '1')]
                 buy, sell = self._mdi.get_price(self._stocks.keys())
+                self._ee.register(EVENT_ORDER, self._on_ord)
                 for key in zh:
                     zc = self._mdi.get_zc(key)
                     for stock in zc.keys():
                         if stock != 'zjky' and zc[stock][0] > 0:
-                            self._mdi.order(key, stock, buy[stock[:6]][0], '0', zc[stock][0], '2')
-                self._ee.register(EVENT_ORDER, self._on_ord)
+                            event = Event(EVENT_ORDER)
+                            event.dict_['account'] = key
+                            event.dict_['stock'] = stock
+                            event.dict_['price'] = buy[stock[:6]][0]
+                            event.dict_['vol'] = zc[stock][0]
+                            event.dict_['direct'] = False
+                            self._ee.put(event)
                 self._ee.register(EVENT_TIMER, self._onChoice)
                 is_not_reg[0] = False
                 print('set_ord_cho')
             # 处理函数解除注册并撤销所有可撤委托
-            if not is_not_reg[0] and now_time > '14:20:00':
+            if not is_not_reg[0] and now_time > '14:50:00':
                 self._ee.unregister(EVENT_TIMER, self._onChoice)
                 self._ee.unregister(EVENT_ORDER, self._on_ord)
                 print('un_set_ord_cho')
@@ -542,7 +641,7 @@ class Trading(object):  # 策略主体
                 for key in zh:
                     zc = self._mdi.get_zc(key)
                     print('资产列表：', zc)
-                print('买入列表：', self._wt_list)
+                print('未成交委托列表：', self._wt_list)
                 print('委托列表：', self._mdi.get_wt_list)
             if now_time > '15:00:00':
                 self._active = False

@@ -17,6 +17,7 @@ from queue import Queue, Empty
 # from trader.vtGateway import *
 from threading import Thread
 from time import sleep
+from datetime import datetime
 from collections import defaultdict, OrderedDict
 import dbf
 from vtobject import *
@@ -109,6 +110,7 @@ class MdApi(object):  # 行情处理类
                     hq_list = []
                 sh_time = ''
                 today = ''
+                now_time = datetime.now()
                 for n, record in enumerate(hq_list):
                     tick = dict()
                     if len(record):
@@ -122,6 +124,7 @@ class MdApi(object):  # 行情处理类
                             continue
                         tick['TradingDay'] = today
                         tick['UpdateTime'] = sh_time
+                        tick['datetime'] = now_time
                         tick['symbol'] = record.s1.strip()
                         tick['exchange'] = 'SH'
                         tick['vtSymbol'] = '.'.join([tick['symbol'], 'SH'])
@@ -317,7 +320,9 @@ class TdApi(object):
         self.active = True
         self._req_thread.start()
         self.query_acc('', False)
+        print(self._zh_list)
         self._client_id += self._get_wt()
+        print(self._zh_list)
         self._get_cj()
         print(self._zh_list)
         self._events_thread.start()
@@ -327,11 +332,13 @@ class TdApi(object):
         self._zh_db.open()
 
         for rec in self._zh_db:
-            zzc = 0.0
-            asset = {'acct': {'zjky': 0.0, 'zzc': 0.0}, 'stocks': dict()}
+            if rec.acct.strip() in self._zh_list:
+                asset = self._zh_list[rec.acct.strip()]
+            else:
+                asset = {'acct': {'zjky': 0.0, 'zzc': 0.0}, 'stocks': dict()}
             if rec.a_type.strip() == 'F':
                 asset['acct']['zjky'] = float(rec.s4)
-                zzc += float(rec.s4)
+                zzc = float(rec.s4)
             else:
                 asset['stocks'][rec.s1.strip()] = [int(rec.s3), float(
                     rec.s4), rec.s8.strip(), float(rec.s9)]
@@ -672,6 +679,7 @@ class TdApi(object):
 
     def _wt_sell(self, rec, normal):
         cl_id = rec.client_id.strip()
+
         if int(rec.filled_qty) > 0:
             if normal:
                 self._zh_list[rec.acct.strip()]['acct']['zjky'] += (int(rec.filled_qty) * float(rec.avg_px) -
