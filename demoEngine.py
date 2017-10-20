@@ -10,7 +10,7 @@
 
 import sys
 from datetime import date
-
+import copy
 import shelve
 
 from collections import OrderedDict
@@ -305,8 +305,8 @@ class DataEngine(object):
         sub_stocks = set()
         print(data)
         for acc in data.keys():
-            self.accountDict[acc] = data[acc]['acct']
-            self.stockDict[acc] = data[acc]['stocks']
+            self.accountDict[acc] = copy.deepcopy(data[acc]['acct'])
+            self.stockDict[acc] = copy.deepcopy(data[acc]['stocks'])
 
             if acc not in self.Portfolio:
                 self.Portfolio[acc] = Portfolio(acc)
@@ -409,12 +409,16 @@ class DataEngine(object):
         elif order.tradeside.strip() == '2':
             self.stockDict[order.acct][order.symbol][0] -= order.ord_qty
 
+        if event.dict_.get('func', '') not in ('_get_wt', '_get_cj'):
+            if order.acct.strip() in self.Portfolio:
+                stock = self.getContract(order.symbol)
+                if stock:
+                    order.name = stock.name
+                    order.is_t0 = order.is_t0
+                self.Portfolio[order.acct.strip()].update_order(order)
         if order.acct.strip() in self.Portfolio:
-            stock = self.getContract(order.symbol)
-            if stock:
-                order.name = stock.name
-                order.is_t0 = order.is_t0
-            self.Portfolio[order.acct.strip()].update_order(order)
+            print(self.Portfolio[order.acct.strip()])
+            print(self.Portfolio[order.acct.strip()].get_all_positions())
 
     def start_ord(self, event):
         trade = event.dict_['data']

@@ -375,7 +375,7 @@ class DemoTdApi(TdApi):
         # 常规报单事件
         event1 = Event(type_=EVENT_ORDER)
         event1.dict_['data'] = rec
-        event1.dict_['func'] = req['func']
+        event1.dict_['func'] = req.get('func', '')
         self.__eventEngine.put(event1)
 
         # 特定合约行情事件
@@ -400,7 +400,7 @@ class DemoTdApi(TdApi):
 
         # 特定合约成交事件
         event2 = Event(type_=(EVENT_TRADE_CONTRACT +
-                              str(req['data'].client_id)))
+                              str(req['data']['OrderRef'])))
         event2.dict_['data'] = req['data']
         self.__eventEngine.put(event2)
 
