@@ -21,6 +21,7 @@ from datetime import datetime
 from collections import defaultdict, OrderedDict
 import dbf
 from vtobject import *
+import copy
 
 
 class MdApi(object):  # 行情处理类
@@ -513,7 +514,7 @@ class TdApi(object):
         self._client_id += 1
         rq = dict()
         rq['callback'] = self.on_order
-        rq['data'] = rec
+        rq['data'] = copy.deepcopy(rec)
         rq['reqID'] = 0
         rq['func'] = 'order'
         self.reqQueue.put(rq)
@@ -548,7 +549,7 @@ class TdApi(object):
                 can_rec.ord_qty - can_rec.filled_qty)
         rq = dict()
         rq['callback'] = self.on_order
-        rq['data'] = can_rec
+        rq['data'] = copy.deepcopy(can_rec)
         rq['reqID'] = 0
         rq['func'] = 'cancel_order'
         self.reqQueue.put(rq)
@@ -587,7 +588,7 @@ class TdApi(object):
         for rec in self._wt_list.values():
             rq = dict()
             rq['callback'] = self.on_order
-            rq['data'] = rec
+            rq['data'] = copy.deepcopy(rec)
             rq['reqID'] = 0
             rq['func'] = '_get_cj'
             self.reqQueue.put(rq)
@@ -617,7 +618,7 @@ class TdApi(object):
                         self.reqQueue.put(rq)
                         rq = dict()
                         rq['callback'] = self.on_order
-                        rq['data'] = self._wt_list[client_id]
+                        rq['data'] = copy.deepcopy(self._wt_list[client_id])
                         rq['reqID'] = 0
                         rq['func'] = 'update_cj'
                         self.reqQueue.put(rq)
@@ -720,7 +721,7 @@ class TdApi(object):
             self._wt_list[str(rec.client_id)] = record
             rq = dict()
             rq['callback'] = self.on_order
-            rq['data'] = record
+            rq['data'] = copy.deepcopy(record)
             rq['reqID'] = 0
             rq['func'] = '_get_wt'
             self.reqQueue.put(rq)
