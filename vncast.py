@@ -342,8 +342,8 @@ class TdApi(object):
                 zzc = float(rec.s4)
             else:
                 asset['stocks'][rec.s1.strip()] = [int(rec.s3), float(
-                    rec.s4), rec.s8.strip(), float(rec.s9)]
-                zzc += float(rec.s9)
+                    rec.s4), rec.s8.strip(), float(rec.s9) if rec.s9.strip() else 0]
+                zzc += float(rec.s9) if rec.s9.strip() else 0
             asset['acct']['zzc'] = zzc
             self._zh_list[rec.acct.strip()] = asset
         self._zh_db.close()
@@ -585,13 +585,13 @@ class TdApi(object):
         for rec in hb_list:
             self.update_cj(rec, False)
         print('成交获取完毕')
-        for rec in self._wt_list.values():
-            rq = dict()
-            rq['callback'] = self.on_order
-            rq['data'] = copy.deepcopy(rec)
-            rq['reqID'] = 0
-            rq['func'] = '_get_cj'
-            self.reqQueue.put(rq)
+#         for rec in self._wt_list.values():
+#             rq = dict()
+#             rq['callback'] = self.on_order
+#             rq['data'] = copy.deepcopy(rec)
+#             rq['reqID'] = 0
+#             rq['func'] = '_get_cj'
+#             self.reqQueue.put(rq)
 
     def update_cj(self, rec, normal=True):
         if len(rec.client_id.strip()):
@@ -602,26 +602,28 @@ class TdApi(object):
                 self._wt_list[client_id].ord_time = rec.ord_time.strip()
                 if self._wt_list[client_id].inst_type == 'C':
                     self._wt_cancel(rec)
-                elif int(rec.filled_qty) > 0:
+                else:
                     self._wt_list[client_id].ord_no = rec.ord_no.strip()
-                    if rec.tradeside.strip() == '1':
-                        self._wt_buy(rec, normal)
-                    elif rec.tradeside.strip() == '2':
-                        self._wt_sell(rec, normal)
-                    if normal and rec.tradeside.strip() in ['1', '2']:
-                        d = self.get_trade(rec)
-                        rq = dict()
-                        rq['callback'] = self.on_trade
-                        rq['data'] = d
-                        rq['reqID'] = 0
-                        rq['func'] = 'update_cj'
-                        self.reqQueue.put(rq)
-                        rq = dict()
-                        rq['callback'] = self.on_order
-                        rq['data'] = copy.deepcopy(self._wt_list[client_id])
-                        rq['reqID'] = 0
-                        rq['func'] = 'update_cj'
-                        self.reqQueue.put(rq)
+                    if int(rec.filled_qty) > 0:
+                        if rec.tradeside.strip() == '1':
+                            self._wt_buy(rec, normal)
+                        elif rec.tradeside.strip() == '2':
+                            self._wt_sell(rec, normal)
+                        if normal and rec.tradeside.strip() in ['1', '2']:
+                            d = self.get_trade(rec)
+                            rq = dict()
+                            rq['callback'] = self.on_trade
+                            rq['data'] = d
+                            rq['reqID'] = 0
+                            rq['func'] = 'update_cj'
+                            self.reqQueue.put(rq)
+                            rq = dict()
+                            rq['callback'] = self.on_order
+                            rq['data'] = copy.deepcopy(
+                                self._wt_list[client_id])
+                            rq['reqID'] = 0
+                            rq['func'] = 'update_cj'
+                            self.reqQueue.put(rq)
 
     def get_trade(self, rec):
         cl_id = rec.client_id.strip()
@@ -719,12 +721,12 @@ class TdApi(object):
             else:
                 record.can_cancel = False
             self._wt_list[str(rec.client_id)] = record
-            rq = dict()
-            rq['callback'] = self.on_order
-            rq['data'] = copy.deepcopy(record)
-            rq['reqID'] = 0
-            rq['func'] = '_get_wt'
-            self.reqQueue.put(rq)
+#             rq = dict()
+#             rq['callback'] = self.on_order
+#             rq['data'] = copy.deepcopy(record)
+#             rq['reqID'] = 0
+#             rq['func'] = '_get_wt'
+#             self.reqQueue.put(rq)
             rec_no += 1
         self._ord_db.close()
         print('委托获取完毕')

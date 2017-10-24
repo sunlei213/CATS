@@ -220,10 +220,11 @@ class DemoTdApi(TdApi):
         self.__eventEngine.put(event)
         event2 = Event(type_=EVENT_TDLOGIN)
         self.__eventEngine.put(event2)
-        for key in self._cj_list.keys():
-            rec = self._cj_list[key]
-            event = Event(type_=EVENT_ORDER + 'start')
+        for key in self._wt_list.keys():
+            rec = self._wt_list[key]
+            event = Event(type_=EVENT_ORDER)
             event.dict_['data'] = rec
+            event.dict_['start'] = True
             self.__eventEngine.put(event)
 
     # ----------------------------------------------------------------------

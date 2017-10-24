@@ -396,6 +396,7 @@ class DataEngine(object):
         """更新委托数据"""
         order = event.dict_['data']
         self.orderDict[order.vtOrderID] = order
+        start = event.dict_.get('start', False)
 
         # 如果订单的状态是全部成交或者撤销，则需要从workingOrderDict中移除
         if not order.can_cancel:
@@ -404,18 +405,18 @@ class DataEngine(object):
         # 否则则更新字典中的数据
         else:
             self.workingOrderDict[order.vtOrderID] = order
-        if order.tradeside.strip() == '1':
-            self.accountDict[order.acct]['zjky'] += order.je
-        elif order.tradeside.strip() == '2':
-            self.stockDict[order.acct][order.symbol][0] -= order.ord_qty
+        if not start:
+            if order.tradeside.strip() == '1':
+                self.accountDict[order.acct]['zjky'] += order.je
+            elif order.tradeside.strip() == '2':
+                self.stockDict[order.acct][order.symbol][0] -= order.ord_qty
 
-        if event.dict_.get('func', '') not in ('_get_wt', '_get_cj'):
-            if order.acct.strip() in self.Portfolio:
-                stock = self.getContract(order.symbol)
-                if stock:
-                    order.name = stock.name
-                    order.is_t0 = order.is_t0
-                self.Portfolio[order.acct.strip()].update_order(order)
+        if order.acct.strip() in self.Portfolio:
+            stock = self.getContract(order.symbol)
+            if stock:
+                order.name = stock.name
+                order.is_t0 = stock.is_t0
+            self.Portfolio[order.acct.strip()].update_order(order, start)
         if order.acct.strip() in self.Portfolio:
             print(self.Portfolio[order.acct.strip()])
             print(self.Portfolio[order.acct.strip()].get_all_positions())
@@ -500,7 +501,7 @@ class DataEngine(object):
         self.eventEngine.register(EVENT_MARKETDATA, self.update_mkt_data)
         self.eventEngine.register((EVENT_ACCOUNT + 'data'), self.update_acc)
         self.eventEngine.register((EVENT_TRADE + 'data'), self.update_trade)
-        self.eventEngine.register((EVENT_ORDER + 'start'), self.start_ord)
+        # self.eventEngine.register((EVENT_ORDER + 'start'), self.start_ord)
 
     def getacc_list(self):
         """获取账户列表"""

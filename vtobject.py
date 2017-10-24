@@ -463,11 +463,11 @@ class Portfolio(object):
                 record = Positions(stock, rec[2], rec[0], rec[1])
                 self.long_positions[stock] = record
 
-    def update_order(self, order):
+    def update_order(self, order, start=False):
         """更新持仓"""
         if order.symbol not in self.long_positions:
             self.long_positions[order.symbol] = Positions(order.symbol)
-        value = self.long_positions[order.symbol].update_order(order)
+        value = self.long_positions[order.symbol].update_order(order, start)
         if value:
             self.available_cash += value
 
@@ -512,37 +512,46 @@ class Positions(object):
 
     def update(self, record):
         """更新账户信息"""
-        self.total_amount = record[0]
+
         self.closeable_amount = record[0]
         self.avg_cost = record[1]
-
+        self.total_amount = self.closeable_amount + self.locked_amount + \
+            self.today_amount * (0 if self.is_t0 else 1)
         self.value = self.price * self.total_amount
 
-    def update_order(self, order):
+    def update_order(self, order, start):
         """更新持仓"""
         value = 0
         if self.name == '':
             self.name = order.name
             self.is_t0 = order.is_t0
-        if order.tradeside == '2':      # 卖出
-            value = order.je
-            if order.filled_qty == 0:       # 卖出委托发送
-                self.closeable_amount -= order.ord_qty
-                self.locked_amount += order.ord_qty
-            elif order.cj_je == 0:          # 卖出撤单
-                rest_vol = order.ord_qty - order.filled_qty
-                self.closeable_amount += rest_vol
-                self.locked_amount -= rest_vol
-            else:                         # 正常卖出成交
-                self.locked_amount -= order.cj_vol
-        elif order.tradeside == '1':   # 买入
-            if order.can_cancel and order.cj_vol >= 0:  # 正常买入成交
-                value = 0
-                self.today_amount += order.cj_vol
-                if self.is_t0:
-                    self.closeable_amount += order.cj_vol
-            else:                                  # 买入委托或撤单
+
+        if start:
+            if order.tradeside == '1':
+                self.today_amount += order.filled_qty
+
+            elif order.tradeside == '2' and order.can_cancel:
+                self.locked_amount += order.ord_qty - order.filled_qty
+        else:
+            if order.tradeside == '2':      # 卖出
                 value = order.je
+                if order.filled_qty == 0:       # 卖出委托发送
+                    self.closeable_amount -= order.ord_qty
+                    self.locked_amount += order.ord_qty
+                elif order.cj_je == 0:          # 卖出撤单
+                    rest_vol = order.ord_qty - order.filled_qty
+                    self.closeable_amount += rest_vol
+                    self.locked_amount -= rest_vol
+                else:                         # 正常卖出成交
+                    self.locked_amount -= order.cj_vol
+            elif order.tradeside == '1':   # 买入
+                if order.can_cancel and order.cj_vol >= 0:  # 正常买入成交
+                    value = 0
+                    self.today_amount += order.cj_vol
+                    if self.is_t0:
+                        self.closeable_amount += order.cj_vol
+                else:                                  # 买入委托或撤单
+                    value = order.je
         self.total_amount = self.closeable_amount + self.locked_amount + \
             self.today_amount * (0 if self.is_t0 else 1)
         self.value = self.price * self.total_amount
@@ -621,7 +630,7 @@ class Order_rec:
             return False
         self.cj_vol = int(fill_qty) - self._filled_qty
         self.cj_je = (float(avg_px) * int(fill_qty) -
-                      self._filled_qty * self._avg_px) / self.cj_vol
+                      self._filled_qty * self._avg_px)
         self._avg_px = float(avg_px)
         self._filled_qty = int(fill_qty)
         self._avg_px = float(avg_px)
