@@ -483,6 +483,15 @@ class Portfolio(object):
         if record.symbol.strip() in self.long_positions:
             self.long_positions[record.symbol.strip()].set_trade(record)
 
+    def get_value(self):
+        data = {}
+        data['AccountID'] = self.account
+        data['Available'] = self.available_cash
+        data['CurrMargin'] = self.total_value
+        data['LockCash'] = self.locked_cash
+        data['MarketValue'] = self.positions_value
+        return data
+
 
 class Positions(object):
     """仓位的对象类"""
@@ -578,6 +587,8 @@ class Positions(object):
         data['Position'] = self.total_amount
         data['PositionCost'] = self.avg_cost
         data['StockValue'] = self.value
+        data['CanUse'] = self.closeable_amount
+        data['']
         return data
 
 

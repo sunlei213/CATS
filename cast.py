@@ -655,7 +655,7 @@ with open(r'd:\sl1.txt', 'r') as f:
     stocks = json.loads(i)
     print(stocks)
 
-# stocks = {'511660':4.103,'511690':3.841,'511810':4.166,'511990':3.893}
+stocks = {'511990': 0}
 ee = EventEngine()
 mdi = CastMid(ee)
 trade = Trading(stocks, ee, mdi)
