@@ -22,6 +22,8 @@ from collections import defaultdict, OrderedDict
 import dbf
 from vtobject import *
 import copy
+from random import randint
+from decimal import Decimal
 
 
 class MdApi(object):  # 行情处理类
@@ -176,6 +178,124 @@ class MdApi(object):  # 行情处理类
             # 流量控制
             sleep(self.interval)
             pass
+
+    def record_strip(self, recodes):
+        for recode in recodes:
+            re = [value.strip() for value in recode]
+            yield re
+
+    def write_mkt_to_show(self):
+        """
+        mkt转show2003
+        :return: True or False
+        """
+        first_line = second_line = third_line = ""
+        i = 0
+        while True:
+            try:
+                with open(self.mtk_file) as f:
+                    lines = [x.replace('\n', '').split('|') for x in f]
+                break
+            except IOError as e:
+                print(e.strerror)
+                i += 1
+                sleep(randint(1, 100) / 100.00)
+                if i > 3:
+                    return False
+        lines = [x for x in self.record_strip(lines)]
+        for i, line in enumerate(lines):
+            if i == 0:
+                first_line = line
+            elif i == 1:
+                second_line = line
+            elif i == 2:
+                third_line = line
+            else:
+                if i == 3:
+                    self._dataMap['000000'] = self.set_first_recode(
+                        first_line, second_line[9], third_line[9], line[9])
+                    self.mkt_to_map(second_line)
+                    self.mkt_to_map(third_line)
+                self.mkt_to_map(line)
+        return True
+
+    def set_first_recode(self, line, zs_price, ag_price, bg_price):
+        objs = [""] * 30
+        objs[0] = "000000"
+        objs[1] = line[6][9:17].replace(":", "") + "  "
+        objs[2] = float(ag_price)
+        objs[3] = float(bg_price)
+        objs[4] = 0
+        self._jyDate = line[6][0:8]
+        objs[5] = self._jyDate
+        if line[8][0] == "E":
+            objs[10] = 1111111111
+            self._isClose = True
+        else:
+            objs[10] = 0
+            self._isClose = False
+        objs[11] = float(zs_price)
+        objs[12] = int(line[8][2])
+        objs[14] = int(line[8][1])
+        objs.insert(0, True)
+        return objs
+
+    def mkt_to_map(self, records):
+        if len(records) == 0 or records[0] == "TRAILER":
+            return
+        objs = [''] * 30
+        if records[0] == "MD001":
+            objs[0] = records[1]
+            objs[1] = records[2]
+            objs[2] = float(records[5])
+            objs[3] = float(records[6])
+            objs[4] = int(999999999999 if len(str(Decimal(records[4]).quantize(Decimal('1')))) > 12
+                          else Decimal(records[4]).quantize(Decimal('1')))
+            objs[5] = float(records[7])
+            objs[6] = float(records[8])
+            objs[7] = float(records[10] if self._isClose else records[9])
+            objs[10] = int(records[3])
+            objs[11] = True
+        else:
+            objs[0] = records[1]
+            objs[1] = records[2]
+            objs[2] = float(records[5])
+            objs[3] = float(records[6])
+            objs[4] = int(999999999999 if len(str(Decimal(records[4]).quantize(Decimal('1')))) > 12
+                          else Decimal(records[4]).quantize(Decimal('1')))
+            objs[5] = float(records[7])
+            objs[6] = float(records[8])
+            objs[7] = float(records[10] if self._isClose else records[9])
+            objs[8] = float(records[11])
+            objs[9] = float(records[13])
+            objs[10] = int(records[3])
+            st_tmp = records[33] if records[0] == "MD004" else records[31]
+            objs[11] = True if len(st_tmp) < 3 else (
+                not (st_tmp[0] != 'P' and st_tmp[2] == '1'))
+            objs[12] = int(records[12])
+            objs[13] = float(records[15])
+            objs[14] = int(records[16])
+            objs[15] = float(records[19])
+            objs[16] = int(records[20])
+            objs[17] = int(records[14])
+            objs[18] = float(records[17])
+            objs[19] = int(records[18])
+            objs[20] = float(records[21])
+            objs[21] = int(records[22])
+            objs[22] = float(records[23])
+            objs[23] = int(records[24])
+            objs[24] = float(records[27])
+            objs[25] = int(records[28])
+            objs[26] = float(records[25])
+            objs[27] = int(records[26])
+            objs[28] = float(records[29])
+            objs[29] = int(records[30])
+        if objs[11]:
+            objs.insert(0, True)
+        else:
+            objs.insert(0, False)
+        objs[12] = ""
+        self._dataMap[records[1]] = objs
 
     def start(self):
         self._is_reqhq = True
